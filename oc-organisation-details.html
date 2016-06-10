@@ -1,4 +1,13 @@
 <link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../paper-listbox/paper-listbox.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-item/paper-icon-item.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../paper-item/paper-item-body.html">
+<link rel="import" href="../gold-phone-input/gold-phone-input.html">
+<link rel="import" href="../paper-checkbox/paper-checkbox.html">
+
 
 <dom-module id="oc-organisation-details">
   <template>
@@ -6,8 +15,59 @@
       :host {
         display: block;
       }
+
+      /*paper-listbox {
+        --paper-listbox: {
+          width: 800px;
+        };
+      }*/
+      paper-icon-item:hover {
+        background: steelblue;
+      }
+      paper-checkbox {
+        display:block;
+        margin-top: 1em;
+      }
     </style>
-    <h2>Hello [[prop1]]</h2>
+
+    <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled >
+      <paper-listbox id="contactPersonsListbox" class="dropdown-content">
+        <template is="dom-repeat" items="[[ contactPersons ]]" as="contactPerson">
+          <paper-icon-item contactPerson="[[ contactPerson ]]">
+            <iron-icon icon="icons:perm-identity" item-icon>
+            </iron-icon>
+            <paper-item-body two-line>
+              <div>[[ contactPerson.name ]]</div>
+              <div secondary>[[ contactPerson.group ]]</div>
+            </paper-item-body>
+          </paper-icon-item>
+        </template>
+      </paper-listbox>
+    </paper-dropdown-menu>
+
+    <gold-phone-input
+      auto-validate
+      country-code="27"
+      phone-number-pattern="XX-XXX-XXXX">
+    </gold-phone-input>
+
+    <h4>Organisation Types</h4>
+    <paper-listbox multi>
+      <template is="dom-repeat" items="[[ organisationTypes ]]" as="organisationType">
+        <paper-icon-item organisationType="[[ organisationType ]]">
+          <iron-icon icon="icons:check" item-icon>
+          </iron-icon>
+          <paper-item-body>
+            <div>[[ organisationType ]]</div>
+          </paper-item-body>
+        </paper-icon-item>
+      </template>
+    </paper-listbox>
+
+    <h4>Industries</h4>
+    <template is="dom-repeat" items="[[ industries ]]" as="industry">
+      <paper-checkbox>[[ industry ]]</paper-checkbox>
+    </template>
   </template>
 
   <script>
@@ -21,6 +81,14 @@
           value: 'oc-organisation-details',
         },
       },
+
+      ready: function () {
+        this.contactPersons = [{name:"Sakkie Verere", group:"(Administrator)"}, {name:"Biennie Fourie", group:"(Manager)"}, {name:"Caren Steenkamp", group:"(Call Centre Operator)"}, ]
+        this.$.contactPersonDropdown.disabled = false;
+
+        this.organisationTypes = ["Franchisor", "Franchisee", "Delivery Service", "Market Place"];
+        this.industries = ["Food", "Retail", "Clothing", "Furniture"];
+      }
 
     });
   </script>
