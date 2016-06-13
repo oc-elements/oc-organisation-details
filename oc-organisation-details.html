@@ -7,6 +7,7 @@
 <link rel="import" href="../paper-item/paper-item-body.html">
 <link rel="import" href="../gold-phone-input/gold-phone-input.html">
 <link rel="import" href="../paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../iron-ajax/iron-ajax.html">
 
 
 <dom-module id="oc-organisation-details">
@@ -15,12 +16,6 @@
       :host {
         display: block;
       }
-
-      /*paper-listbox {
-        --paper-listbox: {
-          width: 800px;
-        };
-      }*/
       paper-icon-item:hover {
         background: steelblue;
       }
@@ -31,14 +26,14 @@
     </style>
 
     <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled >
-      <paper-listbox id="contactPersonsListbox" class="dropdown-content">
+      <paper-listbox id="contactPersonsListbox" class="dropdown-content" selected="[[ _getContactPersonIndex(contactPersons, currentContactPersonId) ]]">
         <template is="dom-repeat" items="[[ contactPersons ]]" as="contactPerson">
           <paper-icon-item contactPerson="[[ contactPerson ]]">
             <iron-icon icon="icons:perm-identity" item-icon>
             </iron-icon>
             <paper-item-body two-line>
               <div>[[ contactPerson.name ]]</div>
-              <div secondary>[[ contactPerson.group ]]</div>
+              <div secondary>[[ contactPerson.groups ]]</div>
             </paper-item-body>
           </paper-icon-item>
         </template>
@@ -48,26 +43,59 @@
     <gold-phone-input
       auto-validate
       country-code="27"
-      phone-number-pattern="XX-XXX-XXXX">
+      phone-number-pattern="XX-XXX-XXXX"
+      label="Organisation Contact Number"
+      value="{{contactNumber}}">
     </gold-phone-input>
 
     <h4>Organisation Types</h4>
-    <paper-listbox multi>
-      <template is="dom-repeat" items="[[ organisationTypes ]]" as="organisationType">
-        <paper-icon-item organisationType="[[ organisationType ]]">
-          <iron-icon icon="icons:check" item-icon>
-          </iron-icon>
-          <paper-item-body>
-            <div>[[ organisationType ]]</div>
-          </paper-item-body>
-        </paper-icon-item>
-      </template>
-    </paper-listbox>
+    <template is="dom-repeat" items="[[ organisationTypeOptions ]]" as="organisationTypeOption">
+      <paper-checkbox checked="[[ _contains(organisationTypes, organisationTypeOption) ]]">
+        [[ organisationTypeOption.name ]]
+      </paper-checkbox>
+    </template>
 
     <h4>Industries</h4>
-    <template is="dom-repeat" items="[[ industries ]]" as="industry">
-      <paper-checkbox>[[ industry ]]</paper-checkbox>
+    <template is="dom-repeat" items="[[ industryOptions ]]" as="industry">
+      <paper-checkbox checked="[[ _contains(industries, industry) ]]">
+        [[ industry.name ]]
+      </paper-checkbox>
     </template>
+
+
+
+    <iron-ajax
+      auto
+      url="[[ _getOrganisationMembersUrl(organisationid) ]]"
+      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+      handle-as="json"
+      on-response="_handleMembersResponse">
+    </iron-ajax>
+
+    <iron-ajax
+      auto
+      url="[[ _getOrganisationTypeOptionsUrl() ]]"
+      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+      handle-as="json"
+      on-response="_handleOrganisationTypeOptionsResponse">
+    </iron-ajax>
+
+    <iron-ajax
+      auto
+      url="[[ _getIndustryOptionsUrl() ]]"
+      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+      handle-as="json"
+      on-response="_handleIndustryOptionsResponse">
+    </iron-ajax>
+
+    <iron-ajax
+      auto
+      url="[[ _getOrganisationUrl(organisationid) ]]"
+      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+      handle-as="json"
+      on-response="_handleOrganisationResponse">
+    </iron-ajax>
+
   </template>
 
   <script>
@@ -76,20 +104,99 @@
       is: 'oc-organisation-details',
 
       properties: {
-        prop1: {
-          type: String,
-          value: 'oc-organisation-details',
-        },
+        clientid: String,
+        organisationid: String
       },
 
       ready: function () {
-        this.contactPersons = [{name:"Sakkie Verere", group:"(Administrator)"}, {name:"Biennie Fourie", group:"(Manager)"}, {name:"Caren Steenkamp", group:"(Call Centre Operator)"}, ]
+        this.industryOptions = [""];
+      },
+
+      _getOrganisationMembersUrl: function(organisationId) {
+        return "https://test-api.ordercloud.com/resource/authorization/organisation/" + organisationId + "/members";
+      },
+
+      _getOrganisationTypeOptionsUrl: function() {
+        return "https://test-api.ordercloud.com/resource/organisations/types";
+      },
+
+      _getIndustryOptionsUrl: function() {
+        return "https://test-api.ordercloud.com/resource/industry";
+      },
+
+      _getOrganisationUrl: function(organisationId) {
+        return "https://test-api.ordercloud.com/resource/organisations/" + organisationId;
+      },
+
+      _getHeaders: function (clientId) {
+        return ;
+      },
+
+      _handleMembersResponse: function(event) {
+
+        this.contacts = [];
+
+        for (var i = 0; i < event.detail.response.results.length; i++) {
+          var contact = event.detail.response.results[i];
+          if (!(contact.groups.length === 1 && contact.groups[0].name === "Customers")) {
+            var groups = "";
+            for (var g = 0; g < contact.groups.length; g++) {
+              if (contact.groups[g].name != "Customers") {
+                groups += contact.groups[g].name.substr(0, contact.groups[g].name.length-1) + ", ";
+              }
+            }
+
+            groups = groups.substr(0, groups.length-2);
+
+            this.contacts.push({
+              id: contact.user.id,
+              name: contact.user.profile.firstName + " " + contact.user.profile.surname,
+              groups: groups
+            });
+          }
+        }
+
+        this.contactPersons = this.contacts;
         this.$.contactPersonDropdown.disabled = false;
+      },
 
-        this.organisationTypes = ["Franchisor", "Franchisee", "Delivery Service", "Market Place"];
-        this.industries = ["Food", "Retail", "Clothing", "Furniture"];
+      _handleOrganisationTypeOptionsResponse: function(event) {
+        this.organisationTypeOptions = event.detail.response.results;
+      },
+
+      _handleIndustryOptionsResponse: function(event) {
+        this.industryOptions = event.detail.response.results;
+      },
+
+      _handleOrganisationResponse: function(event) {
+        this.currentContactPersonId = event.detail.response.profile.contactPerson.id;
+        this.contactNumber = event.detail.response.profile.contactNumber[0] === "0"
+                ? event.detail.response.profile.contactNumber.substr(1, event.detail.response.profile.contactNumber.length)
+                : event.detail.response.profile.contactNumber;
+        this.organisationTypes = event.detail.response.types;
+        this.industries = event.detail.response.industries;
+      },
+
+      _contains: function(objectArray, objectWithId) {
+        for (var i = 0; i < objectArray.length; i++) {
+          if (objectArray[0].id === objectWithId.id) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+
+      _getContactPersonIndex: function(contactPersons, currentContactPersonId) {
+
+        for (var i = 0; i < this.contactPersons.length; i++) {
+          if (this.currentContactPersonId === this.contactPersons[i].id) {
+            return i;
+          }
+        }
+
+        return 0;
       }
-
     });
   </script>
 </dom-module>
