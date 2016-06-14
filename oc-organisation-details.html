@@ -8,10 +8,66 @@
 <link rel="import" href="../gold-phone-input/gold-phone-input.html">
 <link rel="import" href="../paper-checkbox/paper-checkbox.html">
 <link rel="import" href="../iron-ajax/iron-ajax.html">
+<link rel="import" href="../paper-button/paper-button.html">
 
 
 <dom-module id="oc-organisation-details">
   <template>
+
+    <iron-ajax
+            auto
+            url="[[ _getOrganisationMembersUrl(organisationid) ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            handle-as="json"
+            on-response="_handleMembersResponse">
+    </iron-ajax>
+
+    <iron-ajax
+            auto
+            url="[[ _getOrganisationTypeOptionsUrl() ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            handle-as="json"
+            on-response="_handleOrganisationTypeOptionsResponse">
+    </iron-ajax>
+
+    <iron-ajax
+            auto
+            url="[[ _getIndustryOptionsUrl() ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            handle-as="json"
+            on-response="_handleIndustryOptionsResponse">
+    </iron-ajax>
+
+    <iron-ajax
+            auto
+            url="[[ _getOrganisationUrl(organisationid) ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            handle-as="json"
+            on-response="_handleOrganisationResponse">
+    </iron-ajax>
+
+    <iron-ajax
+            id="ajaxPutOrganisationDetails"
+            method="PUT"
+            url="[[ _getUpdateOrganisationDetailUrl(organisationid) ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            content-type="application/json"
+            handle-as="json"
+            on-response="_handleSaveOrganisationDetailsResponse"
+            body="[[ putOrganisationDetailsBody ]]">
+    </iron-ajax>
+
+    <iron-ajax
+            id="ajaxPutOrganisationTypesIndustries"
+            method="PUT"
+            url="[[ _getUpdateOrganisationTypeIndustriesUrl(organisationid) ]]"
+            headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
+            content-type="application/json"
+            handle-as="json"
+            on-response="_handleSaveOrganisationTypeIndustriesResponse"
+            body="[[ putOrganisationTypeIndustriesBody ]]">
+    </iron-ajax>
+
     <style>
       :host {
         display: block;
@@ -26,14 +82,14 @@
     </style>
 
     <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled >
-      <paper-listbox id="contactPersonsListbox" class="dropdown-content" selected="[[ _getContactPersonIndex(contactPersons, currentContactPersonId) ]]">
-        <template is="dom-repeat" items="[[ contactPersons ]]" as="contactPerson">
-          <paper-icon-item contactPerson="[[ contactPerson ]]">
+      <paper-listbox id="contactPersonsListbox" class="dropdown-content" selected="[[ _getContactPersonIndex(contactablePersons, selectedContactPerson) ]]">
+        <template is="dom-repeat" items="[[ contactablePersons ]]" as="contact">
+          <paper-icon-item contact="[[ contact ]]" on-tap="_selectContactPerson">
             <iron-icon icon="icons:perm-identity" item-icon>
             </iron-icon>
             <paper-item-body two-line>
-              <div>[[ contactPerson.name ]]</div>
-              <div secondary>[[ contactPerson.groups ]]</div>
+              <div>[[ contact.name ]]</div>
+              <div secondary>[[ contact.groups ]]</div>
             </paper-item-body>
           </paper-icon-item>
         </template>
@@ -45,56 +101,24 @@
       country-code="27"
       phone-number-pattern="XX-XXX-XXXX"
       label="Organisation Contact Number"
-      value="{{contactNumber}}">
+      value="{{organisationContactNumber}}">
     </gold-phone-input>
 
     <h4>Organisation Types</h4>
     <template is="dom-repeat" items="[[ organisationTypeOptions ]]" as="organisationTypeOption">
-      <paper-checkbox checked="[[ _contains(organisationTypes, organisationTypeOption) ]]">
+      <paper-checkbox on-tap="_organisationTypeSelected" checked="[[ _contains(selectedOrganisationTypes, organisationTypeOption) ]]">
         [[ organisationTypeOption.name ]]
       </paper-checkbox>
     </template>
 
     <h4>Industries</h4>
-    <template is="dom-repeat" items="[[ industryOptions ]]" as="industry">
-      <paper-checkbox checked="[[ _contains(industries, industry) ]]">
-        [[ industry.name ]]
+    <template is="dom-repeat" items="[[ industryOptions ]]" as="industryOption">
+      <paper-checkbox on-tap="_industrySelected" checked="[[ _contains(selectedIndustries, industryOption) ]]">
+        [[ industryOption.name ]]
       </paper-checkbox>
     </template>
 
-
-
-    <iron-ajax
-      auto
-      url="[[ _getOrganisationMembersUrl(organisationid) ]]"
-      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
-      handle-as="json"
-      on-response="_handleMembersResponse">
-    </iron-ajax>
-
-    <iron-ajax
-      auto
-      url="[[ _getOrganisationTypeOptionsUrl() ]]"
-      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
-      handle-as="json"
-      on-response="_handleOrganisationTypeOptionsResponse">
-    </iron-ajax>
-
-    <iron-ajax
-      auto
-      url="[[ _getIndustryOptionsUrl() ]]"
-      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
-      handle-as="json"
-      on-response="_handleIndustryOptionsResponse">
-    </iron-ajax>
-
-    <iron-ajax
-      auto
-      url="[[ _getOrganisationUrl(organisationid) ]]"
-      headers='{"Authorization": "Basic cnVkb2xmQG9yZGVyY2xvdWQuY28uemE6cGFzc3dvcmQ=", "X-Ordercloud-Organisation": "b241bebc36530fe8ebd4a499323e605d"}'
-      handle-as="json"
-      on-response="_handleOrganisationResponse">
-    </iron-ajax>
+    <paper-button raised class="save" on-tap="_saveTapped">Save</paper-button>
 
   </template>
 
@@ -128,12 +152,15 @@
         return "https://test-api.ordercloud.com/resource/organisations/" + organisationId;
       },
 
-      _getHeaders: function (clientId) {
-        return ;
+      _getUpdateOrganisationDetailUrl: function(organisationId) {
+        return "https://test-api.ordercloud.com/resource/organisations/" + organisationId + "/detail";
+      },
+
+      _getUpdateOrganisationTypeIndustriesUrl: function(organisationId) {
+        return "https://test-api.ordercloud.com/resource/organisations/" + organisationId + "/setup/typeindustry";
       },
 
       _handleMembersResponse: function(event) {
-
         this.contacts = [];
 
         for (var i = 0; i < event.detail.response.results.length; i++) {
@@ -149,14 +176,14 @@
             groups = groups.substr(0, groups.length-2);
 
             this.contacts.push({
-              id: contact.user.id,
               name: contact.user.profile.firstName + " " + contact.user.profile.surname,
-              groups: groups
+              groups: groups,
+              user: { id: contact.user.id, username: contact.user.username, profile: contact.user.profile },
             });
           }
         }
 
-        this.contactPersons = this.contacts;
+        this.contactablePersons = this.contacts;
         this.$.contactPersonDropdown.disabled = false;
       },
 
@@ -169,17 +196,17 @@
       },
 
       _handleOrganisationResponse: function(event) {
-        this.currentContactPersonId = event.detail.response.profile.contactPerson.id;
-        this.contactNumber = event.detail.response.profile.contactNumber[0] === "0"
+        this.selectedContactPerson = event.detail.response.profile.contactPerson;
+        this.organisationContactNumber = event.detail.response.profile.contactNumber[0] === "0"
                 ? event.detail.response.profile.contactNumber.substr(1, event.detail.response.profile.contactNumber.length)
                 : event.detail.response.profile.contactNumber;
-        this.organisationTypes = event.detail.response.types;
-        this.industries = event.detail.response.industries;
+        this.selectedOrganisationTypes = event.detail.response.types;
+        this.selectedIndustries = event.detail.response.industries;
       },
 
       _contains: function(objectArray, objectWithId) {
         for (var i = 0; i < objectArray.length; i++) {
-          if (objectArray[0].id === objectWithId.id) {
+          if (objectArray[i].id === objectWithId.id) {
             return true;
           }
         }
@@ -187,15 +214,58 @@
         return false;
       },
 
-      _getContactPersonIndex: function(contactPersons, currentContactPersonId) {
+      _getContactPersonIndex: function(contactablePersons, seletctedContactPerson) {
 
-        for (var i = 0; i < this.contactPersons.length; i++) {
-          if (this.currentContactPersonId === this.contactPersons[i].id) {
+        for (var i = 0; i < contactablePersons.length; i++) {
+          if (seletctedContactPerson.id === contactablePersons[i].user.id) {
             return i;
           }
         }
 
         return 0;
+      },
+
+      _selectContactPerson: function(event) {
+        this.selectedContactPerson = event.model.contact.user;
+      },
+
+      _organisationTypeSelected: function(event) {
+        if (event.currentTarget.checked) {
+          this.selectedOrganisationTypes.push(event.model.organisationTypeOption);
+        } else {
+          this.selectedOrganisationTypes.pop(event.model.organisationTypeOption);
+        }
+      },
+
+      _industrySelected: function(event) {
+        if (event.currentTarget.checked) {
+          this.selectedIndustries.push(event.model.industryOption);
+        } else {
+          this.selectedIndustries.pop(event.model.industryOption);
+        }
+      },
+
+      _saveTapped: function(event) {
+        this.putOrganisationDetailsBody = {
+          contactPerson: this.selectedContactPerson,
+          contactNumber: this.organisationContactNumber,
+          notificationSourceEmail: ""
+        };
+        this.$.ajaxPutOrganisationDetails.generateRequest();
+
+        this.putOrganisationTypeIndustriesBody = {
+          types: this.selectedOrganisationTypes,
+          industries: this.selectedIndustries
+        };
+        this.$.ajaxPutOrganisationTypesIndustries.generateRequest();
+      },
+
+      _handleSaveOrganisationDetailsResponse: function(event) {
+
+      },
+
+      _handleSaveOrganisationTypeIndustriesResponse: function(event) {
+
       }
     });
   </script>
