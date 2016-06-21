@@ -9,7 +9,11 @@
     "paper-item": "PolymerElements/paper-item#^1.2.1",
     "gold-phone-input": "PolymerElements/gold-phone-input#^1.0.9",
     "paper-checkbox": "PolymerElements/paper-checkbox#^1.2.0",
-    "paper-button": "PolymerElements/paper-button#^1.0.12"
+    "paper-button": "PolymerElements/paper-button#^1.0.12",
+    "oc-organisation-types": "^0.2.2",
+    "oc-organisation-industries": "^0.1.0",
+    "paper-toast": "^1.3.0",
+    "oc-organisation-api": "^0.4.0"
   },
   "devDependencies": {
     "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
