@@ -74,7 +74,11 @@
         organisationId: String
       },
 
-      ready: function () {
+      observers: [
+        '_organisationIdChanged(organisationId)'
+      ],
+
+      _organisationIdChanged: function (organisationId) {
 
         this.$.authorizationApi.getOrganisationMembers(this.organisationId, [])
                 .then(this._filterRelevantUsers.bind(this))
