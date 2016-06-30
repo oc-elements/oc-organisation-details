@@ -38,9 +38,18 @@
         background-color: var(--default-primary-color);
         color: var(--text-primary-color);
       }
+      oc-organisation-types,
+      oc-organisation-industries{
+        max-width: 250px;
+      }
+      gold-phone-input,
+      paper-dropdown-menu {
+        max-width: 350px;
+        width: 100%;
+      }
     </style>
 
-    <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled >
+    <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled$="[[ loading ]]" >
       <paper-listbox id="contactPersonsListbox" class="dropdown-content" selected="[[ _getContactPersonIndex(_contactablePersons, _selectedContactPerson) ]]">
         <template is="dom-repeat" items="[[ _contactablePersons ]]" as="contact">
           <paper-icon-item contact="[[ contact ]]" on-tap="_selectContactPerson">
@@ -56,17 +65,17 @@
     </paper-dropdown-menu>
 
     <gold-phone-input max-width="250px"
-      auto-validate
-      country-code="27"
-      phone-number-pattern="XX-XXX-XXXX"
-      label="Organisation Contact Number"
-      value="{{ _organisationContactNumber }}">
+                      auto-validate
+                      country-code="27"
+                      phone-number-pattern="XX-XXX-XXXX"
+                      label="Organisation Contact Number"
+                      value="{{ _organisationContactNumber }}">
     </gold-phone-input>
 
     <oc-organisation-types selected-types="{{ _organisationTypes }}"></oc-organisation-types>
     <oc-organisation-industries selected-industries="{{ _organisationIndustries }}"></oc-organisation-industries>
 
-    <p><paper-button raised class="save" on-tap="_saveTapped">Save</paper-button></p>
+    <p><paper-button raised class="save" on-tap="_saveTapped" disabled$="[[ loading ]]">Save</paper-button></p>
   </template>
 
   <script>
@@ -91,30 +100,24 @@
       },
 
       _organisationIdChanged: function (organisationId) {
+        if (!organisationId) {
+          return;
+        }
 
         this.loading = true;
         var loadingMembers = true;
         var loadingOrganisation = true;
 
-        this.$.authorizationApi.getOrganisationMembers(this.organisationId, [])
+        var fetchMembers = this.$.authorizationApi.getOrganisationMembers(this.organisationId, [])
                 .then(this._filterRelevantUsers.bind(this))
-                .catch(function (error) {
-                  //this.$.errorMessage.hidden = false;
-                }.bind(this))
-                .finally(function () {
-                  loadingMembers = false;
-                  this.loading = loadingMembers || loadingOrganisation;
-                }.bind(this));
+                .catch(console.error);
 
-        this.$.organisationApi.getOrganisation(this.organisationId)
+        var fetchOrganisation = this.$.organisationApi.getOrganisation(this.organisationId)
                 .then(this._handleOrganisationResponse.bind(this))
-                .catch(function (error) {
-                  //this.$.errorMessage.hidden = false;
-                }.bind(this))
-                .finally(function () {
-                  loadingOrganisation = false;
-                  this.loading = loadingOrganisation || loadingMembers;
-                }.bind(this));
+                .catch(console.error);
+
+        Promise.join(fetchMembers, fetchOrganisation)
+                .then(this.set.bind(this, 'loading', false, false))
       },
 
       _filterRelevantUsers: function(ironRequest) {
@@ -141,7 +144,6 @@
         }
 
         this._contactablePersons = this.contacts;
-        this.$.contactPersonDropdown.disabled = false
       },
 
       _handleOrganisationResponse: function(ironRequest) {
@@ -170,27 +172,24 @@
 
       _saveTapped: function(event) {
 
-        this.$.organisationApi.updateOrganisationDetails(this.organisationId, {
+        var updateOrganisationDetailsPromise = this.$.organisationApi.updateOrganisationDetails(this.organisationId, {
           contactPerson: this._selectedContactPerson,
           contactNumber: this._organisationContactNumber,
           notificationSourceEmail: ""
-        })
-        .then(this._handleSaveOrganisationDetailsResponse.bind(this))
-        .catch(this._handleSaveError.bind(this));
+        });
 
-        this.$.organisationApi.updateOrganisationTypesIndustries(this.organisationId, {
+        var updateOrganisationTypeIndustriesPromise = this.$.organisationApi.updateOrganisationTypesIndustries(this.organisationId, {
           types: this._organisationTypes,
           industries: this._organisationIndustries
-        })
-        .then(this._handleSaveOrganisationTypeIndustriesResponse.bind(this))
-        .catch(this._handleSaveError.bind(this));
+        });
+
+        Promise.join(updateOrganisationDetailsPromise, updateOrganisationTypeIndustriesPromise)
+                .then(this._handleSavedResponse.bind(this))
+                .catch(this._handleSaveError.bind(this));
+
       },
 
-      _handleSaveOrganisationDetailsResponse: function(event) {
-        this.fire('saved');
-      },
-
-      _handleSaveOrganisationTypeIndustriesResponse: function(event) {
+      _handleSavedResponse: function(event) {
         this.fire('saved');
       },
 
