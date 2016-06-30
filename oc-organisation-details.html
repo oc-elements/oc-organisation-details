@@ -76,7 +76,10 @@
 
       properties: {
         organisationId: String,
-        loading: Boolean
+        loading: {
+          type: Boolean,
+          notify: true
+        }
       },
 
       observers: [
