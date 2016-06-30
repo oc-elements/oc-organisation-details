@@ -33,6 +33,11 @@
         display:block;
         margin-top: 1em;
       }
+      paper-button {
+        margin: 1em 0 0;
+        background-color: var(--default-primary-color);
+        color: var(--text-primary-color);
+      }
     </style>
 
     <paper-dropdown-menu id="contactPersonDropdown" label="Contact Person" disabled >
@@ -50,7 +55,7 @@
       </paper-listbox>
     </paper-dropdown-menu>
 
-    <gold-phone-input
+    <gold-phone-input max-width="250px"
       auto-validate
       country-code="27"
       phone-number-pattern="XX-XXX-XXXX"
@@ -61,8 +66,7 @@
     <oc-organisation-types selected-types="{{ _organisationTypes }}"></oc-organisation-types>
     <oc-organisation-industries selected-industries="{{ _organisationIndustries }}"></oc-organisation-industries>
 
-    <paper-button raised class="save" on-tap="_saveTapped">Save</paper-button>
-    <paper-toast id="toast"></paper-toast>
+    <p><paper-button raised class="save" on-tap="_saveTapped">Save</paper-button></p>
   </template>
 
   <script>
@@ -71,28 +75,43 @@
       is: 'oc-organisation-details',
 
       properties: {
-        organisationId: String
+        organisationId: String,
+        loading: Boolean
       },
 
       observers: [
         '_organisationIdChanged(organisationId)'
       ],
 
+      refresh: function() {
+        this._organisationIdChanged(this.organisationId);
+      },
+
       _organisationIdChanged: function (organisationId) {
+
+        this.loading = true;
+        var loadingMembers = true;
+        var loadingOrganisation = true;
 
         this.$.authorizationApi.getOrganisationMembers(this.organisationId, [])
                 .then(this._filterRelevantUsers.bind(this))
                 .catch(function (error) {
                   //this.$.errorMessage.hidden = false;
                 }.bind(this))
-                .finally();
+                .finally(function () {
+                  loadingMembers = false;
+                  this.loading = loadingMembers || loadingOrganisation;
+                }.bind(this));
 
         this.$.organisationApi.getOrganisation(this.organisationId)
                 .then(this._handleOrganisationResponse.bind(this))
                 .catch(function (error) {
                   //this.$.errorMessage.hidden = false;
                 }.bind(this))
-                .finally();
+                .finally(function () {
+                  loadingOrganisation = false;
+                  this.loading = loadingOrganisation || loadingMembers;
+                }.bind(this));
       },
 
       _filterRelevantUsers: function(ironRequest) {
@@ -165,15 +184,15 @@
       },
 
       _handleSaveOrganisationDetailsResponse: function(event) {
-        this.$.toast.show('Success! Organisation updated');
+        this.fire('saved');
       },
 
       _handleSaveOrganisationTypeIndustriesResponse: function(event) {
-        this.$.toast.show('Success! Organisation updated');
+        this.fire('saved');
       },
 
       _handleSaveError: function(error) {
-        this.$.toast.show(error || 'Error: Failed to update organisation');
+        this.fire('error', error);
       }
     });
   </script>
